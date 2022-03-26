@@ -44,23 +44,30 @@ class Track:
 class Section:
     """Tunnel section
     """
-    def __init__(self, n_keep=10, track_max_age=5):
+    def __init__(self, n_keep=10, track_max_age=5, arrived_threshold=0.3, left_threshold=-0.1):
         """
         Args:
             n_keep (int, optional): number of kept information from previous time steps. Defaults to 10.
             track_max_age (int, optional): maximum track age, refer to Track. Defaults to 5.
+            arrived_threshold (float, optional): classification threshold for arrival indicator. Defaults to 0.3.
+            left_threshold (float, optional): classification threshold for departure indicator. Defaults to -0.1.
         """
         self.n_keep = n_keep
         self.ratios = list()
 
+        self.arrived_threshold = arrived_threshold
+        self.left_threshold = left_threshold
+
         self.track_max_age = track_max_age
         self.tracks = list()
 
-    def update(self, mask):
+    def update(self, mask, output='diff'):
         """Update section from motion mask
 
         Args:
             mask (numpy.ndarray): motion boolean mask
+            output (str, optional): output differentiation results or classification results, outputs differentiation
+                                    on "diff", classification result otherwise. Defaults to "diff".
 
         Returns:
             float: output class or derivative for viz purposes
@@ -71,18 +78,17 @@ class Section:
         if len(self.ratios) > self.n_keep:
             self.ratios = self.ratios[len(self.ratios)-self.n_keep:]
         derivative = self.diff()
-        if derivative > 0.3:
+        if derivative > self.arrived_threshold:
             cls = 1
             self.tracks.append(Track(max_age=self.track_max_age))
-        elif derivative < -0.1:
+        elif derivative < self.left_threshold:
             cls = -1
             for track in self.tracks:
                 if track.state == State.Arrived:
                     track.state = State.Left
         else:
             cls = 0
-        # return cls  
-        return derivative    
+        return derivative if output == 'diff' else cls
 
     def update_tracks(self):
         """Update all existing tracks
@@ -111,25 +117,28 @@ class Section:
 class Tunnel:
     """Tunnel
     """
-    def __init__(self, x_boundaries, sections=4, track_max_age=5):
+    def __init__(self, x_boundaries, sections=4, track_max_age=5, arrived_threshold=0.3, left_threshold=-0.1):
         """s:
             x_boundaries (tuple(int, int)): tunnel's x-axis boundaries on input frames
             sections (int, optional): number of sections the tunnel will be split on along the y-axis. Defaults to 4.
             track_max_age (int, optional): maximum track age, refer to Track. Defaults to 5.
+            arrived_threshold (float, optional): classification threshold for arrival indicator. Defaults to 0.3.
+            left_threshold (float, optional): classification threshold for departure indicator. Defaults to -0.1.
         """
         self.bins = x_boundaries
         self.n_sections = sections
 
-        self.sections = [Section(track_max_age=track_max_age) for _ in range(sections)]
+        self.sections = [Section(track_max_age=track_max_age, arrived_threshold=arrived_threshold, left_threshold=left_threshold) for _ in range(sections)]
         self.dyn_model = BackgroundModel(50, 50, 30, 5000)
 
         self.bee_counter = {'up': 0, 'down': 0}
 
-    def update(self, img):
+    def update(self, img, output='diff'):
         """Update on next time step
 
         Args:
             img (numpy.ndarray): BGR frame
+            output (str, optional): output differentiation results or classification results, refer to Section. Defaults to "diff".
 
         Returns:
             list: list of outputs from individual section updates, for viz purposes
@@ -141,7 +150,7 @@ class Tunnel:
         
         mask = self.dyn_model.get_mask(gray)
         splits = np.split(mask, self.n_sections, axis=0)
-        outputs = [section.update(split) for section, split in zip(self.sections, reversed(splits))]
+        outputs = [section.update(split, output=output) for section, split in zip(self.sections, reversed(splits))]
             
         self.assign_tracks()
         return outputs
