@@ -29,10 +29,10 @@ def main():
         img_path = os.path.join(dataset_path, file)
         img = cv2.imread(img_path)[20:, ...]
 
-        ratios = [tunnel.update(img) for tunnel in tunnels]
+        data = [tunnel.update(img) for tunnel in tunnels]
         counters = [tunnel.bee_counter for tunnel in tunnels]
     
-        viz.draw(img, ratios, counters)
+        viz.draw(img, data, counters)
         # plt.waitforbuttonpress()
 
 

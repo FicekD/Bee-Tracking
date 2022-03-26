@@ -30,11 +30,14 @@ class BackgroundModel:
             img (numpy.ndarray): monochromatic frame
         """
         img = cv2.medianBlur(img, 7)
+        # if this is the first frame, set it as model
         if self.prev is None or self.model is None:
             self.prev, self.model = img, img
             return
+        # check if sccene is dynamic with respect to prev frame, if static -> continue
         dynamic_scene = self.is_dynamic(img, self.prev, self.diff_th, self.count_diff_th)
         if not dynamic_scene:
+            # check if scene is dynamic with respect to model, update model if static
             dynamic_model = self.is_dynamic(img, self.model, self.model_diff_th, self.model_count_diff_th)
             if not dynamic_model:
                 self.model = self.alpha * img.astype(np.float32) + (1 - self.alpha) * self.model
@@ -49,6 +52,7 @@ class BackgroundModel:
         Returns:
             numpy.ndarray: boolean mask
         """
+        # two-way thresholded subtraction, morph open to clear noise
         mask = np.abs(img.astype(np.float32) - self.model.astype(np.float32)) > self.model_diff_th
         mask = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_OPEN, np.ones((7, 7))).astype(bool)
         return mask
@@ -66,5 +70,6 @@ class BackgroundModel:
         Returns:
             bool: True if dynamic, False otherwise
         """
+        # two-way thresholded subtraction, if number of positive elements is greate then threhsold, scene is dynamic
         diff = np.abs(img1.astype(np.float32) - img2.astype(np.float32))
         return np.count_nonzero(diff > diff_th) > count_th

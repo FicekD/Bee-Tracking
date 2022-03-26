@@ -29,6 +29,7 @@ class Track:
         """Update track age
         """
         self.age += 1
+        # set as Expired if crossed maximum age
         if self.age > self.max_age:
             self.state = State.Expired
     
@@ -72,29 +73,38 @@ class Section:
         Returns:
             float: output class or derivative for viz purposes
         """
+        # firstly update all tracks
         self.update_tracks()
+        # calculate fill ratio
         ratio = np.count_nonzero(mask) / mask.size
         self.ratios.append(ratio)
+        # check for maximum data length
         if len(self.ratios) > self.n_keep:
             self.ratios = self.ratios[len(self.ratios)-self.n_keep:]
-        derivative = self.diff()
+        # calculate derivative and threshold it
+        derivative = self.diff(order='first')
         if derivative > self.arrived_threshold:
+            # classified as bee arrival, create new track
             cls = 1
             self.tracks.append(Track(max_age=self.track_max_age))
         elif derivative < self.left_threshold:
+            # classified as bee departure, set the oldest arrival track as left
             cls = -1
             for track in self.tracks:
                 if track.state == State.Arrived:
                     track.state = State.Left
         else:
+            # no event
             cls = 0
         return derivative if output == 'diff' else cls
 
     def update_tracks(self):
         """Update all existing tracks
         """
+        # update all tracks
         for track in self.tracks:
             track.update()
+        # remove expired and accounted tracks
         self.tracks = [track for track in self.tracks if track.is_valid()]
 
     def diff(self, order='first'):
@@ -143,15 +153,17 @@ class Tunnel:
         Returns:
             list: list of outputs from individual section updates, for viz purposes
         """
+        # segment tunnel from image and convert to gray
         img = img[:, self.bins[0]:self.bins[1], ...]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
+        # update dynamic model
         self.dyn_model.update(gray)
-        
+        # get motion mask and split the mask into sections
         mask = self.dyn_model.get_mask(gray)
         splits = np.split(mask, self.n_sections, axis=0)
+        # update all sections with split masks
         outputs = [section.update(split, output=output) for section, split in zip(self.sections, reversed(splits))]
-            
+        # try to assign tracks
         self.assign_tracks()
         return outputs
     
@@ -161,12 +173,16 @@ class Tunnel:
         tracks_to_assign = list()
         for section in self.sections:
             for track in section.tracks:
+                # if section contains unaccounted departured bee, save the track and continue with next section
                 if track.state == State.Left:
                     tracks_to_assign.append(track)
                     break
+                # if section does not contain unaccounted departured bee, terminate assignment
             else:
                 return
+        # if found departured bee in all sections, set all selected tracks as accounted
         for track in tracks_to_assign:
             track.state = State.Accounted
+        # check track ages and classify direction
         key = 'up' if tracks_to_assign[0].age < tracks_to_assign[-1].age else 'down'
         self.bee_counter[key] += 1
