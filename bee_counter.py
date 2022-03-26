@@ -41,15 +41,15 @@ def main():
     sections = 4
     tunnels = [Tunnel(xbin, sections=sections, track_max_age=20) for xbin in bins]
 
-    frame_heght = 120
+    frame_heght = 140
     x_axis_len = 50
     viz = Visualizer(sections, x_axis_len, bins, frame_heght)
 
     for file in files:
         img_path = os.path.join(dataset_path, file)
-        img = cv2.imread(img_path)[20:, ...]
+        img = cv2.imread(img_path)
 
-        data = [tunnel.update(img) for tunnel in tunnels]
+        data = [tunnel.update(img[20:, ...]) for tunnel in tunnels]
         counters = [tunnel.bee_counter for tunnel in tunnels]
     
         viz.draw(img, data, counters)

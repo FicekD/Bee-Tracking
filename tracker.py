@@ -125,7 +125,7 @@ class Section:
 
 
 class Tunnel:
-    """Tunnel
+    """Single tunnel tracker
     """
     def __init__(self, x_boundaries, sections=4, track_max_age=5, arrived_threshold=0.3, left_threshold=-0.1):
         """s:
