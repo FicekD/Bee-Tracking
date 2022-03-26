@@ -1,3 +1,21 @@
+"""
+Bee counter from files
+
+<dir>
+├── data
+│  └── 210906_Pokus2
+│     └── *.jpg
+│  └── 210906_Pokus2_sorted
+│     └── *.jpg
+├── background.py
+├── bee_counter.py
+├── tracker.py
+├── visualizer.py
+"""
+
+__authors__ = ['Bc. Dominik Ficek', 'Bc. David Makówka']
+__credits__ = ['Ing. Šimon Bilík']
+
 import os
 
 import numpy as np
@@ -23,7 +41,9 @@ def main():
     sections = 4
     tunnels = [Tunnel(xbin, sections=sections, track_max_age=20) for xbin in bins]
 
-    viz = Visualizer(sections, 50, bins, 140)
+    frame_heght = 120
+    x_axis_len = 50
+    viz = Visualizer(sections, x_axis_len, bins, frame_heght)
 
     for file in files:
         img_path = os.path.join(dataset_path, file)
@@ -33,6 +53,7 @@ def main():
         counters = [tunnel.bee_counter for tunnel in tunnels]
     
         viz.draw(img, data, counters)
+        plt.pause(0.2)
         # plt.waitforbuttonpress()
 
 
