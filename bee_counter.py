@@ -59,7 +59,7 @@ def main():
         update_time = time() - s
         counters = [tunnel.bee_counter for tunnel in tunnels]
         
-        sys.stdout.write(f'\rUpdate latency: {update_time*1e3:.2f}ms{10*" "}')
+        sys.stdout.write(f'\rUpdate latency: {update_time*1e3:.2f}ms     ')
         sys.stdout.flush()
     
         viz.draw(img, data, counters)
