@@ -6,13 +6,15 @@ import matplotlib.pyplot as plt
 class Visualizer:
     """Bee counter visualizer with blitting
     """
-    def __init__(self, sections, n_keep, bins, img_height):
+    def __init__(self, sections, n_keep, bins, img_height, arrived_threshold=None, left_threshold=None):
         """
         Args:
             sections (int): number of sections tunnels are split into
             n_keep (int): maximum number of data length kept from previous time steps
             bins (tuple(n*tuple(int, int))): n tunnels' x-axis boundaries on input frames
             img_height (int): expected input frame height
+            arrived_threshold (float or None, optional): classification threshold for arrival indicator. Defaults to None.
+            left_threshold (float or None, optional): classification threshold for departure indicator. Defaults to None.
         """
         self.rows = sections
         self.cols = len(bins)
@@ -28,7 +30,7 @@ class Visualizer:
         self.data_axes = self.axes[self.cols:]
         # init all axes
         self.img_data = self.init_img_axes(self.img_axes)
-        self.line_data = self.init_data_axes(self.data_axes)
+        self.line_data = self.init_data_axes(self.data_axes, arrived_threshold, left_threshold)
         # x-axis data is constant for time series plot, prepare lists for y-axis data
         self.xdata = np.arange(self.x_limit+1)
         self.ydata = [[] for _ in range(self.rows*self.cols)]
@@ -59,11 +61,13 @@ class Visualizer:
         # prepare image data objects to write data to
         return [ax.imshow(np.zeros((self.img_height, xbin[1] - xbin[0], 3))) for ax, xbin in zip(axes.reshape(-1), self.bins)]
 
-    def init_data_axes(self, axes):
+    def init_data_axes(self, axes, arrived_threshold=None, left_threshold=None):
         """Initiate data viz axes
 
         Args:
             axes (list(matplotlib.axes.Axes)): axes to plot data on
+            arrived_threshold (float or None, optional): classification threshold for arrival indicator. Defaults to None.
+            left_threshold (float or None, optional): classification threshold for departure indicator. Defaults to None.
 
         Returns:
             list(matplotlib.lines.Line2D): Data objects on axes
@@ -78,7 +82,15 @@ class Visualizer:
             ax.tick_params(axis='y', which='major', labelsize=7, pad=0.1)
             ax.grid()
         # prepare plot data objects to write data to
-        return [ax.plot([], [], 'r-')[0] for ax in axes.reshape(-1)]
+        data_lines = [ax.plot([], [], 'r-')[0] for ax in axes.reshape(-1)]
+        # draw classification thresholds
+        if arrived_threshold is not None:
+            for ax in axes.reshape(-1):
+                ax.axhline(y=arrived_threshold, xmin=0, xmax=self.x_limit, linestyle='-', linewidth=0.6)
+        if left_threshold is not None:
+            for ax in axes.reshape(-1):
+                ax.axhline(y=left_threshold, xmin=0, xmax=self.x_limit, linestyle='-', linewidth=0.6)
+        return data_lines
 
     def draw(self, image, data, counters):
         """Draw tunnels and data outputs

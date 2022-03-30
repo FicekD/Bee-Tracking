@@ -33,25 +33,32 @@ class Track:
         if self.age > self.max_age:
             self.state = State.Expired
     
+    def is_left(self):
+        """
+        Returns:
+            bool: left flag
+        """
+        return self.state == State.Left
+
     def is_valid(self):
         """Track is valid if it's not expired or already accounted for
 
         Returns:
             bool: validity flag
         """
-        return self.state == State.Arrived or self.state == State.Left
+        return (self.state == State.Arrived) or (self.state == State.Left)
 
 
 class Section:
     """Tunnel section
     """
-    def __init__(self, n_keep=10, track_max_age=5, arrived_threshold=0.3, left_threshold=-0.1):
+    def __init__(self, n_keep=10, track_max_age=5, arrived_threshold=0.3, left_threshold=-0.3):
         """
         Args:
             n_keep (int, optional): number of kept information from previous time steps. Defaults to 10.
             track_max_age (int, optional): maximum track age, refer to Track. Defaults to 5.
             arrived_threshold (float, optional): classification threshold for arrival indicator. Defaults to 0.3.
-            left_threshold (float, optional): classification threshold for departure indicator. Defaults to -0.1.
+            left_threshold (float, optional): classification threshold for departure indicator. Defaults to -0.3.
         """
         self.n_keep = n_keep
         self.ratios = list()
@@ -98,14 +105,18 @@ class Section:
             cls = 0
         return derivative if output == 'diff' else cls
 
+    def remove_invalid_tracks(self):
+        """Removes invalid tracks
+        """
+        self.tracks = [track for track in self.tracks if track.is_valid()]
+
     def update_tracks(self):
         """Update all existing tracks
         """
-        # update all tracks
+        # update all tracks and remove expired and accounted tracks
         for track in self.tracks:
             track.update()
-        # remove expired and accounted tracks
-        self.tracks = [track for track in self.tracks if track.is_valid()]
+        self.remove_invalid_tracks()
 
     def diff(self, order='first'):
         """Calculate differentiation from last valid time step
@@ -127,13 +138,13 @@ class Section:
 class Tunnel:
     """Single tunnel tracker
     """
-    def __init__(self, x_boundaries, sections=4, track_max_age=5, arrived_threshold=0.3, left_threshold=-0.1):
+    def __init__(self, x_boundaries, sections=4, track_max_age=5, arrived_threshold=0.3, left_threshold=-0.3):
         """s:
             x_boundaries (tuple(int, int)): tunnel's x-axis boundaries on input frames
             sections (int, optional): number of sections the tunnel will be split on along the y-axis. Defaults to 4.
             track_max_age (int, optional): maximum track age, refer to Track. Defaults to 5.
             arrived_threshold (float, optional): classification threshold for arrival indicator. Defaults to 0.3.
-            left_threshold (float, optional): classification threshold for departure indicator. Defaults to -0.1.
+            left_threshold (float, optional): classification threshold for departure indicator. Defaults to -0.3.
         """
         self.bins = x_boundaries
         self.n_sections = sections
@@ -186,3 +197,5 @@ class Tunnel:
         # check track ages and classify direction
         key = 'up' if tracks_to_assign[0].age < tracks_to_assign[-1].age else 'down'
         self.bee_counter[key] += 1
+        for section in self.sections:
+            section.remove_invalid_tracks()
