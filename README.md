@@ -18,8 +18,10 @@ Bee-Tracking
 │     └── *.jpg
 │  └── 210906_Pokus2_sorted
 │     └── *.jpg
+├── bee_counter.ini
 ├── background.py
 ├── bee_counter.py
 ├── tracker.py
+├── threads.py
 ├── visualizer.py
 ```
