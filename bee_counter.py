@@ -42,17 +42,17 @@ def standalone():
     dataset_path = os.path.join(base_path, 'data', dataset)
     files = os.listdir(dataset_path)
 
-    bins = (
-        (80, 150), (175, 217), (230, 300), (327, 384),
-        (407, 471), (490, 560), (570, 650), (663, 724),
-        (749, 805), (833, 893), (913, 978), (987, 1046)
-    )
-    sections = 4
-    arrived_threshold = 0.3
-    left_threshold = -0.3
-    track_max_age = 20
+    cfg_path = os.path.join(base_path, 'bee_counter.ini')
+    cfg = configparser.ConfigParser()
+    cfg.read(cfg_path)
 
-    background_init_from_file = True
+    bins = json.loads(cfg.get('ImageProcessing', 'bins'))
+    sections = cfg.getint('ImageProcessing', 'sections')
+    arrived_threshold = cfg.getfloat('ImageProcessing', 'arrived_threshold')
+    left_threshold = cfg.getfloat('ImageProcessing', 'left_threshold')
+    track_max_age = cfg.getint('ImageProcessing', 'track_max_age')
+    background_init_from_file = cfg.getboolean('ImageProcessing', 'background_init_from_file')
+
     background_init_frame = None
     if background_init_from_file:
         background_init_frame = cv2.imread(os.path.join(base_path, 'data', 'background.jpg'))
