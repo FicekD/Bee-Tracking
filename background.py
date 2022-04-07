@@ -5,7 +5,7 @@ import cv2
 class BackgroundModel:
     """Background subtraction adaptive model
     """
-    def __init__(self, diff_th, count_diff_th, model_diff_th, model_count_diff_th, alpha=0.01):
+    def __init__(self, diff_th, count_diff_th, model_diff_th, model_count_diff_th, alpha=0.01, background_init_frame=None):
         """
         Args:
             diff_th (int): difference threshold to classify scene as dynamic or static
@@ -13,6 +13,7 @@ class BackgroundModel:
             model_diff_th (int): difference threshold to classify frame as dynamic with respect to model
             model_count_diff_th (int): number of dynamic pixels required to classify scene as dynamic with respect to model
             alpha (float, optional): model learning rate. Defaults to 0.01.
+            background_init_frame (numpy.ndarray, optional): dynamic model initial frame. Defaults to None.
         """
         self.diff_th = diff_th
         self.count_diff_th = count_diff_th
@@ -20,8 +21,8 @@ class BackgroundModel:
         self.model_count_diff_th = model_count_diff_th
         self.alpha = alpha
 
-        self.prev = None
-        self.model = None
+        self.prev = background_init_frame
+        self.model = background_init_frame
 
     def update(self, img):
         """Update dynamic model, first frame is set as the initial model

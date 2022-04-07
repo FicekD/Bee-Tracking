@@ -138,19 +138,23 @@ class Section:
 class Tunnel:
     """Single tunnel tracker
     """
-    def __init__(self, x_boundaries, sections=4, track_max_age=5, arrived_threshold=0.3, left_threshold=-0.3):
+    def __init__(self, x_boundaries, sections=4, track_max_age=5, arrived_threshold=0.3, left_threshold=-0.3, background_init_frame=None):
         """s:
             x_boundaries (tuple(int, int)): tunnel's x-axis boundaries on input frames
             sections (int, optional): number of sections the tunnel will be split on along the y-axis. Defaults to 4.
             track_max_age (int, optional): maximum track age, refer to Track. Defaults to 5.
             arrived_threshold (float, optional): classification threshold for arrival indicator. Defaults to 0.3.
             left_threshold (float, optional): classification threshold for departure indicator. Defaults to -0.3.
+            background_init_frame (numpy.ndarray, optional): dynamic model initial frame. Defaults to None.
         """
         self.bins = x_boundaries
         self.n_sections = sections
 
         self.sections = [Section(track_max_age=track_max_age, arrived_threshold=arrived_threshold, left_threshold=left_threshold) for _ in range(sections)]
-        self.dyn_model = BackgroundModel(50, 50, 30, 5000)
+        if background_init_frame is not None:
+            background_init_frame = background_init_frame[20:, self.bins[0]:self.bins[1], ...]
+            background_init_frame = cv2.cvtColor(background_init_frame, cv2.COLOR_BGR2GRAY)
+        self.dyn_model = BackgroundModel(50, 50, 30, 5000, background_init_frame=background_init_frame)
 
         self.bee_counter = {'up': 0, 'down': 0}
 
@@ -165,7 +169,7 @@ class Tunnel:
             list: list of outputs from individual section updates, for viz purposes
         """
         # segment tunnel from image and convert to gray
-        img = img[:, self.bins[0]:self.bins[1], ...]
+        img = img[20:, self.bins[0]:self.bins[1], ...]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         # update dynamic model
         self.dyn_model.update(gray)
