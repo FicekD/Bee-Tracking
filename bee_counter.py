@@ -111,7 +111,7 @@ def threaded_config():
     consumer.start()
 
     try:
-        while True:
+        while _run_event.is_set():
             sleep(0.1)
     except KeyboardInterrupt:
         _run_event.clear()
