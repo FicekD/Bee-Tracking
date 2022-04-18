@@ -1,0 +1,85 @@
+\chapter{Motion tracking techniques}
+Our~task stands on~analyzing the~movement of~individual objects, bees traversing through a~predefined environment. There are numerous existing techniques tackling this problem, each with its own sets of~pros and cons. In~this chapter we briefly discuss practical applicability of~several techniques on~our~task.
+
+With the~uprising of~convolutional neural networks and specifically object detectors many works focus on~tracking objects with direct access to detector's predictions on~each frame, for example the Deep SORT \cite{deep_sort} algorithm. This approach is not suitable for our~cause as~convolutional neural networks are computationally expensive.
+
+Another motion analysis technique is to~use initial state of~objects in~their first appearance in~analyzed sequence to~track them though the~sequence using just visual information. A~common approach for~this problem is to~use Siamese neural networks \cite{siamese} that formulate the~problem as convolutional feature cross-correlation between objects and region of~interest. Again this approach requires the use of~computationally expensive neural networks and further more due to~the~large bee traffic though the~observed alley the~initialization step would've had to be ran on~every time step, increasing the~computational cost even more.
+
+Some works focus on~analyzing temporal information though a~low-dimensional subspace of~ambient space with~clustering techniques, these techniques are known as~subspace clustering techniques \cite{subsapce-theory} and are used to~separate low-dimensional data to~their parent subspaces. This approach seems to~be feasible for our~needs at~the~first glance but is not applicable due to~numerous reasons. The most common problem with~subspace clustering variants is that they set requirements on~the~low-dimensional data that are not realistic for~us to~meet, for~example they require prior knowledge of~number of~subspaces \cite{k-subspace,k-flats-subspace} or~prior knowledge of~number of~data points each of~the~subspaces contain \cite{geometric-subspace}. Other approaches generally rely on~building a~similarity matrix from~input data matrix \cite{general-motion-seg,manifold-seg,spectral-clustering}, this approach is also not suitable for~our~needs as~our~low-dimensional data points would be extracted with SIFT-like algorithm, resulting in~inconsistencies in~subsequent data points between time steps, both in~terms of~their location and their quantity. Also, it's worth to~mention that as~the~objects of~interest are bees, which are visually difficult to~distinguish from~each other even for a~human, relying on~local features does not seem like the~correct approach, especially when considering our~low sampling frequency which further lowers the~temporal information each feature's geometric properties carry.
+
+\chapter{Proposed solution}
+As~none of~the~previously mentioned motion tracking techniques proved to~be suitable for~our~needs we deviate from~analyzing a~movement of~individual objects of~interest and utilize our~prior knowledge of~environment and analyze only an~overall movement in~region of~interest.
+
+In~order to~keep a~reliable representation of~our~environment even after~a~longer period of~time we utilize dynamic background model. We initialize our~dynamic model $m(x,y,k)$ optionally with~the~first frame of~the~sequence or~with~a~previously captured frame of~the~environment $f(x,y,k=0)$.
+\begin{equation}
+    m(x,y,0) = f(x,y,0)
+\end{equation}
+In~each time step of~the~sequence we analyze the~overall dynamic properties of~the~frame with~thresholded subtraction
+\begin{equation}
+    d_1(x,y,k) = 
+    \begin{cases}
+        1  & \text{if } \left\lvert f(x,y,k) - f(x,y,k-1) \right\rvert > T_1 \\
+        0  & \text{otherwise}
+    \end{cases}
+\end{equation}
+where $T_1$ is empirically selected threshold. And based on~the~overall number of~dynamic pixels we flag the~scene as~either dynamic or~non-dynamic
+\begin{equation}
+    D_1(k) = \sum _{x,y}d_1(x, y, k) > T_2
+\end{equation}
+where $T_2$ is again empirically selected threshold. Our~dynamic model is updated only when the~scene is flagged as~static in~sequence, meaning $D_1$ is flagged as~\textit{false}, and the~scene is flagged as~static with~respect to~the~dynamic model. This flag is calculated in~similar fashion as~the~$D_1$ flag.
+\begin{equation}
+    d_2(x,y,k) = 
+    \begin{cases}
+        1  & \text{if } \left\lvert f(x,y,k) - m(x,y,k-1) \right\rvert > T_1 \\
+        0  & \text{otherwise}
+    \end{cases}
+\end{equation}
+\begin{equation}
+    D_2(k) = \sum _{x,y}d_2(x, y, k) > T_2
+\end{equation}
+The~dynamic model is then updated with simple adaptive filter
+\begin{equation}
+    m(x, y, k) = 
+    \begin{cases}
+        \alpha \cdot f(x,y,k) + (1-\alpha)\cdot m(x, y, k-1)  & \text{if } D1(k) \text{ and } D2(k) \\
+        m(x, y, k-1)  & \text{otherwise}
+    \end{cases}
+\end{equation}
+where $\alpha$ is the~learning rate of~the~dynamic model.
+
+To~track the~level of~dynamic activity in~our~region of~interest, we inspect the~ratio of~dynamically flagged pixels in~subtracted frame from~the~current time step with~our~dynamic environment model to~the~number of~pixels in~the~region. However, this metric alone does not carry any information in terms of~the~movement's direction. To~compensate this we split the~inspected region into~$N$ sections along the~$y$ axis.
+\begin{equation}
+    \begin{gathered}
+        f(x,y) \rightarrow g(x,y,n) \\
+        \rm I\!R^{X\times Y} \rightarrow \rm I\!R^{X\times \left\lfloor \frac{Y}{N}\right\rfloor  \times N}
+    \end{gathered}
+\end{equation}
+In~each of~these $N$ sections we calculate the~already mentioned metric of~dynamic activity
+\begin{equation}
+    d(x,y,n,k) = 
+    \begin{cases}
+        1  & \text{if } \left\lvert f(x,y,n,k) - m(x,y,n,k) \right\rvert > T_1 \\
+        0  & \text{otherwise}
+    \end{cases}
+\end{equation}
+\begin{equation}
+    r(n, k) = \frac{1}{X \cdot Y} \sum _{x,y} d(x,y,n,k)
+\end{equation}
+this $r(n,k)$ signal now carries enough information to~determine the~level and direction of~movement in~observed region. To~further ease this signal's processing we approximate first order partial derivative with~respect to~the~time step dimension with~differentiation
+\begin{equation}
+    dr(n, k) = r(n, k) - r(n, k-1)
+\end{equation}
+In~the~resulting signal $dr(n, k)$ we threshold its peaks to~classify the~current timestep with~one of~three classes: bee arrival ($class = 1$), idle state ($class = 0$) and bee departure ($class = -1$).
+\begin{equation}
+    class(n, k) = 
+    \begin{cases}
+        1  & \text{if } dr(n, k) > T_3 \\
+        -1  & \text{if } dr(n, k) < -T_3 \\
+        0  & \text{otherwise}
+    \end{cases}
+\end{equation}
+where $T_3 \in \left\langle 0, 1\right\rangle $ is empirically selected threshold value.
+
+To~implement the~actual counter of~bees that traverse the~region in~one way or~the~other we keep track of~classes from~the~last $K_{max}$ time steps. On~each bee arrival we add a~track to~a~list and with~each bee departure we flag an~unflagged track as~valid. Once a~valid track is present in~all $N$ sections, we increment a~counter. The~direction of the~bee's movement is based on~the~age of~the~valid tracks on~the~edges of~the~region.
+
+As~this is quite a~simple approach, it's bound to~have limitations, its main disadvantage is that if the bees do not travel independently but~in~packs, $r(n,k)$ will remain close to~constant, $dr(n, k)$ will be close to~zero and the~bees won't be accounted for. Other limitation that we have observed in~experiments is that once a~bee slows down at~some point of~its traverse through the~observed area or the~lightning in~the observed area lowers its intensity, the~$dr(n, k)$ values reduces sometimes even to~a~noise level. This leads to~a~missing track entry in~one or~more sections of~a~tunnel, the~bee is not accounted for~and there may be hanging tracks left in~sections where the~bee was registered. This effect can have detrimental effect on~next registered bees as~hanging tracks on~the~edges of~the~observed region define estimated traverse direction. This effect can be suppressed lowering the~maximum track age $K_{max}$ but~lowering this value also effectively reduces sensitivity when the~bee's velocity lowers. On~the~bright side this approach runs under~20ms on~Raspberry Pi 4B, sequentially processing 12 bee tunnels in~each frame.

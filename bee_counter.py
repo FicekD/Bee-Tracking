@@ -101,8 +101,8 @@ def threaded_config():
     background_init_from_file = cfg.getboolean('ImageProcessing', 'background_init_from_file')
     if background_init_from_file:
         background_init_frame = cv2.imread(os.path.join(base_path, 'data', 'background.jpg'))
-    tunnel_func = partial(Tunnel, sections=sections, track_max_age=track_max_age, arrived_threshold=arrived_threshold, left_threshold=left_threshold, background_init_frame=background_init_frame)
     
+    tunnel_func = partial(Tunnel, sections=sections, track_max_age=track_max_age, arrived_threshold=arrived_threshold, left_threshold=left_threshold, background_init_frame=background_init_frame)
     tunnel_args = json.loads(cfg.get('ImageProcessing', 'bins'))
 
     producer = ProducerThread(dataset_path, 'producer')

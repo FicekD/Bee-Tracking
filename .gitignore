@@ -1,3 +1,24 @@
 data/
 old/
 __pycache__/
+
+# latex data
+*.lol
+*.aux
+*.toc
+*.vf
+*.tfm
+*.pfb
+*.toa
+*.fd
+*.out
+*.gz
+*.enc
+*.fdb*
+*.map
+*.lof
+*.fls
+*.lot
+*.xdv
+*.log
+logo/
