@@ -1,4 +1,10 @@
-data/
+data/archives/
+data/210827_Pokus1/
+data/210827_Pokus1_sorted/
+data/210906_Pokus2/
+data/210906_Pokus2_results/
+data/210906_Pokus2_sorted/
+data/211003_Pokus3_ims/
 old/
 __pycache__/
 

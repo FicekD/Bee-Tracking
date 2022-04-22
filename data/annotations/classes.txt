@@ -1,0 +1,4 @@
+bee_complete
+bee_head
+bee_abdomen
+bee_cluster
